@@ -56,6 +56,18 @@ namespace MonitoringBackend.Service
             }
         }
 
+        public void StopAllDevices()
+        {
+            lock (_lock)
+            {
+                foreach (var task in _devices.Values)
+                {
+                    task.Stop();
+                }
+                _devices.Clear();
+            }
+        }
+
         //public bool StopDevice(string deviceId)
         //{
         //    lock (_lock)

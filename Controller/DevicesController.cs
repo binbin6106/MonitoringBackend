@@ -40,6 +40,7 @@ namespace MonitoringBackend.Controller
             device.location = updated.location;
             device.description = updated.description;
             device.ip = updated.ip;
+            device.image = updated.image;
 
             // 先删除不存在的传感器
             device.sensors.RemoveAll(s => !updated.sensors.Any(us => us.id == s.id));

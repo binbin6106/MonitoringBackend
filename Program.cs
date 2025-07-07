@@ -47,8 +47,9 @@ builder.Services.AddAuthentication("Bearer")
 builder.Services.AddAuthorization();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseMySql("server=39.106.56.86;port=33060;database=monitor;user=root;password=zhangwenbin123;", ServerVersion.AutoDetect("server=39.106.56.86;port=33060;database=monitor;user=root;password=zhangwenbin123;")));
-
+    //options.UseMySql("server=39.106.56.86;port=33060;database=monitor;user=root;password=zhangwenbin123;", ServerVersion.AutoDetect("server=39.106.56.86;port=33060;database=monitor;user=root;password=zhangwenbin123;")));
+    options.UseMySql("server=rm-m5e5bp66w746nb36muo.mysql.rds.aliyuncs.com;port=3306;database=monitor;user=monitor;password=Zhangwenbin123!;", ServerVersion.AutoDetect("server=rm-m5e5bp66w746nb36muo.mysql.rds.aliyuncs.com;port=3306;database=monitor;user=monitor;password=Zhangwenbin123!;")));
+builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
@@ -65,5 +66,6 @@ app.MapHub<DeviceDataHub>("/sensorHub");
 
 app.MapControllers();
 
+app.UseStaticFiles();
 app.Run();
 

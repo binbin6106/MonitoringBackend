@@ -4,7 +4,7 @@ using MonitoringBackend.Service;
 namespace MonitoringBackend.Controller
 {
     [ApiController]
-    [Route("api/device-collector")]
+    [Route("device-control")]
     public class DeviceCollectorController : ControllerBase
     {
         private readonly MultiDeviceCollectorService _collector;
@@ -21,14 +21,12 @@ namespace MonitoringBackend.Controller
             return Ok("采集已启动");
         }
 
-        //[HttpPost("stop")]
-        //public IActionResult Stop(string deviceId)
-        //{
-        //    if (_collector.StopDevice(deviceId))
-        //        return Ok($"[{deviceId}] 已停止采集");
-        //    else
-        //        return NotFound($"[{deviceId}] 没有在采集中");
-        //}
+        [HttpPost("stop")]
+        public IActionResult Stop()
+        {
+            _collector.StopAllDevices();
+            return Ok("采集已停止");
+        }
 
         //[HttpGet("status")]
         //public IActionResult Status(string deviceId)
