@@ -12,12 +12,15 @@ namespace MonitoringBackend.Service
         private readonly ILogger<MultiDeviceCollectorService> _logger;
         private readonly IHubContext<DeviceDataHub> _hubContext;
         private readonly object _lock = new();
+        private readonly AlarmService _alarmService;
         //private List<Device> devices = new List<Device>();
 
-        public MultiDeviceCollectorService(ILogger<MultiDeviceCollectorService> logger, IHubContext<DeviceDataHub> hubContext)
+        public MultiDeviceCollectorService(ILogger<MultiDeviceCollectorService> logger, IHubContext<DeviceDataHub> hubContext, AlarmService alarmService)
         {
             _logger = logger;
             _hubContext = hubContext;
+            _alarmService = alarmService;
+
         }
 
         private async Task<List<Device>> getDevices()
@@ -51,7 +54,7 @@ namespace MonitoringBackend.Service
             {
                 foreach (Device item in devices)
                 {
-                    _devices[item.id] = new DeviceCollectorTask(item, _logger, _hubContext);
+                    _devices[item.id] = new DeviceCollectorTask(item, _logger, _hubContext, _alarmService);
                 }
             }
         }

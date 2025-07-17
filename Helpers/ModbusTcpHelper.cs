@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Net.Sockets;
 using InfluxDB.Client.Api.Domain;
@@ -27,10 +28,10 @@ namespace MonitoringBackend.Helpers
         {
             returnsensorData.Clear();
             bool online = false;
-            // 创建 TCP 客户端
-            using (TcpClient client = new TcpClient(device.ip, Port))
+            try
             {
-                try
+                // 创建 TCP 客户端
+                using (TcpClient client = new TcpClient(device.ip, Port))
                 {
                     // 创建 Modbus TCP Master（主站）
                     var master = ModbusIpMaster.CreateIp(client);
@@ -76,28 +77,27 @@ namespace MonitoringBackend.Helpers
 
                     }
                     online = true;
-
-                }
-                catch (SocketException)
-                {
-                    for (int i = 0; i < device.sensors.Count; i++)
-                    {
-                           SensorData singeSensor = new SensorData
-                            {
-                                SensorId = device.sensors[i].id,
-                                Temperature = 0.0, // 假设温度数据在第一个寄存器
-                                XVibration = 0.0, // 假设X方向振动数据在第二个寄存器
-                                YVibration = 0.0, // 假设Y方向振动数据在第三个寄存器
-                                ZVibration = 0.0, // 假设Z方向振动数据在第四个寄存器
-                                Vibration = 0.0,   // 假设总振动数据在第五个寄存器
-                                Timestamp = DateTime.Now
-                            };
-                            returnsensorData.Add(singeSensor);                      
-                    }
-                    online = false;
                 }
 
             }
+            catch (SocketException)
+            {
+                //for (int i = 0; i < device.sensors.Count; i++)
+                //{
+                //    SensorData singeSensor = new SensorData
+                //    {
+                //        SensorId = device.sensors[i].id,
+                //        Temperature = 0.0, // 假设温度数据在第一个寄存器
+                //        XVibration = 0.0, // 假设X方向振动数据在第二个寄存器
+                //        YVibration = 0.0, // 假设Y方向振动数据在第三个寄存器
+                //        ZVibration = 0.0, // 假设Z方向振动数据在第四个寄存器
+                //        Vibration = 0.0,   // 假设总振动数据在第五个寄存器
+                //        Timestamp = DateTime.Now
+                //    };
+                //    returnsensorData.Add(singeSensor);
+                //}
+                online = false;
+            }          
             return (returnsensorData, online);
 
         }

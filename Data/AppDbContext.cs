@@ -6,6 +6,8 @@ namespace MonitoringBackend.Data
     {
         public DbSet<Device> Devices => Set<Device>();
         public DbSet<Sensor> Sensors => Set<Sensor>();
+        public DbSet<AlarmThreshold> AlarmThresholds { get; set; }
+        public DbSet<AlarmRecord> AlarmRecords { get; set; }
 
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
@@ -16,6 +18,21 @@ namespace MonitoringBackend.Data
                 .WithOne()
                 .HasForeignKey(s => s.device_id)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<AlarmThreshold>()
+               .HasIndex(t => new { t.sensor_id, t.alarmType })
+               .IsUnique();
+
+            //    modelBuilder.Entity<AlarmThreshold>()
+            //        .HasOne(t => t.sensor)
+            //        .HasForeignKey(t => t.sensor_id)
+            //        .OnDelete(DeleteBehavior.Cascade);
+
+            //    modelBuilder.Entity<AlarmRecord>()
+            //        .HasOne(r => r.sensor)
+            //        .HasForeignKey(r => r.SensorId)
+            //        .OnDelete(DeleteBehavior.Cascade);
+            //}
         }
     }
 

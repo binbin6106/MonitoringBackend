@@ -5,6 +5,7 @@ using System.Text;
 using MonitoringBackend.Data;
 using Microsoft.EntityFrameworkCore;
 using MonitoringBackend.Service;
+using MonitoringBackend.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +16,8 @@ builder.Services.Configure<InfluxSettings>(builder.Configuration.GetSection("Inf
 builder.Services.AddSingleton<InfluxService>();
 //builder.Services.AddHostedService<TcpListenerService>();
 builder.Services.AddSingleton<MultiDeviceCollectorService>();
+builder.Services.AddSingleton<AlarmThresholdCache>();
+builder.Services.AddScoped<AlarmService>();
 // ✅ 注册 CORS 服务
 builder.Services.AddCors(options =>
 {
@@ -47,8 +50,8 @@ builder.Services.AddAuthentication("Bearer")
 builder.Services.AddAuthorization();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    //options.UseMySql("server=39.106.56.86;port=33060;database=monitor;user=root;password=zhangwenbin123;", ServerVersion.AutoDetect("server=39.106.56.86;port=33060;database=monitor;user=root;password=zhangwenbin123;")));
-    options.UseMySql("server=rm-m5e5bp66w746nb36muo.mysql.rds.aliyuncs.com;port=3306;database=monitor;user=monitor;password=Zhangwenbin123!;", ServerVersion.AutoDetect("server=rm-m5e5bp66w746nb36muo.mysql.rds.aliyuncs.com;port=3306;database=monitor;user=monitor;password=Zhangwenbin123!;")));
+    options.UseMySql("server=39.106.56.86;port=33060;database=monitor;user=root;password=zhangwenbin123;", ServerVersion.AutoDetect("server=39.106.56.86;port=33060;database=monitor;user=root;password=zhangwenbin123;")));
+    //options.UseMySql("server=rm-m5e5bp66w746nb36muo.mysql.rds.aliyuncs.com;port=3306;database=monitor;user=monitor;password=Zhangwenbin123!;", ServerVersion.AutoDetect("server=rm-m5e5bp66w746nb36muo.mysql.rds.aliyuncs.com;port=3306;database=monitor;user=monitor;password=Zhangwenbin123!;")));
 builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();

@@ -20,12 +20,14 @@ namespace MonitoringBackend.Service
         private readonly IHubContext<DeviceDataHub> _hubContext;
         public bool IsRunning => !_task.IsCompleted;
         private ModbusTcpHelper modbustcp;
+        private readonly AlarmService _alarmService;
 
-        public DeviceCollectorTask(Device device, ILogger logger, IHubContext<DeviceDataHub> hubContext)
+        public DeviceCollectorTask(Device device, ILogger logger, IHubContext<DeviceDataHub> hubContext, AlarmService alarmService)
         {
             device1 = device;
             online = false;
             _cts = new CancellationTokenSource();
+            _alarmService = alarmService;
             _logger = logger;
             _hubContext = hubContext;
             _task = Task.Run(() => Run(_cts.Token));
@@ -38,32 +40,9 @@ namespace MonitoringBackend.Service
             
             while (!token.IsCancellationRequested)
             {
-                _logger.LogInformation($"[{device1.id}] 正在采集...");
+                _logger.LogInformation($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{device1.id}] 正在采集...");
                 (List<SensorData> data, online) = modbustcp.getData();
-                
-                //List<SensorData> data = new List<SensorData>
-                //{
-                //    new SensorData
-                //    {
-                //        SensorId = 1,
-                //        Temperature = Math.Round(Random.Shared.Next(20, 30) + Random.Shared.NextDouble(),2),
-                //        XVibration = Math.Round(Random.Shared.NextDouble(),2),
-                //        YVibration = Math.Round(Random.Shared.NextDouble(),2),
-                //        ZVibration = Math.Round(Random.Shared.NextDouble(),2),
-                //        Vibration = Math.Round(Random.Shared.NextDouble(),2),
-                //        Timestamp = DateTime.Now
-                //    },
-                //    new SensorData
-                //    {
-                //        SensorId = 2,
-                //        Temperature = Math.Round(Random.Shared.Next(20, 30) + Random.Shared.NextDouble(),2),
-                //        XVibration = Math.Round(Random.Shared.NextDouble(),2),
-                //        YVibration = Math.Round(Random.Shared.NextDouble(),2),
-                //        ZVibration = Math.Round(Random.Shared.NextDouble(),2),
-                //        Vibration = Math.Round(Random.Shared.NextDouble(),2),
-                //        Timestamp = DateTime.Now
-                //    }
-                //};
+
                 var result = new
                 {
                     device1.id,
@@ -74,17 +53,25 @@ namespace MonitoringBackend.Service
                     online,
                     data = data
                 };
-                //var result = new
-                //{
-                //    device1.id,
-                //    device1.ip,
-                //    device1.location,
-                //    data = data
-                //};
+
                 var json = JsonSerializer.Serialize(result);
                 Debug.WriteLine(json);
 
                 await _hubContext.Clients.All.SendAsync("ReceiveDeviceData", json);
+
+                foreach (var item in data)
+                {
+                    await _alarmService.ProcessDataAsync(item.SensorId, "XVibration", (float)item.XVibration);
+                    //await _alarmService.ProcessDataAsync(item.SensorId, "YVibration", item.YVibration);
+                    //await _alarmService.ProcessDataAsync(item.SensorId, "ZVibration", item.ZVibration);
+                    //await _alarmService.ProcessDataAsync(item.SensorId, "Vibration", item.Vibration);
+                    //await _alarmService.ProcessDataAsync(item.SensorId, "Temperature", item.Temperature);
+                }
+
+
+
+
+
                 await Task.Delay(2000, token); // 每秒采集
             }
             _logger.LogInformation($"[{device1.id}] 已停止采集。");
