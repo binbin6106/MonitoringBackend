@@ -17,10 +17,11 @@ namespace MonitoringBackend.Helpers
 
         private ushort[] ModbusAddress { get; set; } = {0x0002,  0x0012, 0x0022, 0x0032};
         private ushort[] ModbusCoilAddress { get; set; } = { 0x0000, 0x0002, 0x0004, 0x0006 };
-        public List<AlarmRecord> alarmRecord { get; set; } = new List<AlarmRecord>();
+        public Dictionary<int, AlarmRecord> alarmRecord = new Dictionary<int, AlarmRecord>();
         private float[] low_threshold = new float[5];
         private float[] up_threshold = new float[5];
         public string[] point_sign = { "温度", "X方向振动", "Y方向振动", "Z方向振动", "振动矢量和" };
+
         public ModbusTcpHelper(Gateway gatewayData)
         {
             gateway = gatewayData;
@@ -28,7 +29,7 @@ namespace MonitoringBackend.Helpers
             SlaveId = 1;            // 从站ID
         }
 
-        public (List<SensorData>, bool) getData()
+        public (List<SensorData>, bool, Dictionary<int, AlarmRecord>) getData()
         {
             returnsensorData.Clear();
             bool online = false;
@@ -56,55 +57,67 @@ namespace MonitoringBackend.Helpers
                                 string[] low_threshold_str = gateway.sensors[i].low_threshold.Split(',');
                                 string[] up_threshold_str = gateway.sensors[i].up_threshold.Split(',');
 
-                                for (int p = 0; p < 5; p++)
-                                {
-                                    low_threshold[p] = float.Parse(low_threshold_str[p]);
-                                    up_threshold[p] = float.Parse(up_threshold_str[p]);
-                                }
+                                low_threshold = low_threshold_str.Select(p => float.Parse(p)).ToArray();
+                                up_threshold = up_threshold_str.Select(p => float.Parse(p)).ToArray();
 
                                 for (int q = 0; q < 5; q++)
                                 {
-                                    if ((values[q] / 10.0f) >= up_threshold[q])
+                                    float nowVaule = values[q] / 10.0f;
+                                    bool isNowAlarm = alarmRecord.TryGetValue(q, out AlarmRecord prevAlarm) ? true : false;
+                                    //不处于报警状态时，才会去判断阈值
+                                    if (!isNowAlarm)
                                     {
-                                        alarmRecord.Add(
+                                        if (nowVaule >= up_threshold[q])
+                                        {
+                                            alarmRecord.Add(q,
                                                 new AlarmRecord
                                                 {
                                                     sensor_id = gateway.sensors[i].id,
+                                                    channel_id = q,
+                                                    device_name = gateway.sensors[i].device_name,
+                                                    sensor_name = gateway.sensors[i].name,
+                                                    point_name = point_sign[q],
                                                     alarmType = "High",
-                                                    alarmValue = values[q] / 10.0f, // 假设寄存器值需要除以10转换为实际值
+                                                    alarmValue = nowVaule, // 假设寄存器值需要除以10转换为实际值
                                                     thresholdMin = low_threshold[q],
                                                     thresholdMax = up_threshold[q],
                                                     alarmLevel = "Danger",
                                                     alarmTime = DateTime.Now,
-                                                    handled = false,
-                                                    message = $"传感器 {point_sign[q]} 的值 {values[q] / 10.0f} 超过了上限阈值 {up_threshold[q]}"
+                                                    handled = false                         
                                                 }
                                             );
+                                        }
+                                        if (nowVaule <= low_threshold[q])
+                                        {
+                                            alarmRecord.Add(q,
+                                                    new AlarmRecord
+                                                    {
+                                                        sensor_id = gateway.sensors[i].id,
+                                                        channel_id = q,
+                                                        device_name = gateway.sensors[i].device_name,
+                                                        sensor_name = gateway.sensors[i].name,
+                                                        point_name = point_sign[q],
+                                                        alarmType = "Low",
+                                                        alarmValue = nowVaule, // 假设寄存器值需要除以10转换为实际值
+                                                        thresholdMin = low_threshold[q],
+                                                        thresholdMax = up_threshold[q],
+                                                        alarmLevel = "Danger",
+                                                        alarmTime = DateTime.Now,
+                                                        handled = false
+                                                    }
+                                                );
+                                        }
                                     }
-                                    if ((values[q] / 10.0f) <= low_threshold[q])
+                                    //处于报警状态时，判断值是否恢复正常
+                                    else
                                     {
-                                        alarmRecord.Add(
-                                                new AlarmRecord
-                                                {
-                                                    sensor_id = gateway.sensors[i].id,
-                                                    alarmType = "Low",
-                                                    alarmValue = values[q] / 10.0f, // 假设寄存器值需要除以10转换为实际值
-                                                    thresholdMin = low_threshold[q],
-                                                    thresholdMax = up_threshold[q],
-                                                    alarmLevel = "Danger",
-                                                    alarmTime = DateTime.Now,
-                                                    handled = false,
-                                                    message = $"传感器 {point_sign[q]} 的值 {values[q] / 10.0f} 低于了下限阈值 {low_threshold[q]}"
-                                                }
-                                            );
+                                        if (nowVaule < up_threshold[q] && nowVaule > low_threshold[q])
+                                        {
+                                            alarmRecord.Remove(q);
+                                        }
                                     }
                                 }
                             }
-                            else
-                            {
-                                alarmRecord.Clear();
-                            }
-
 
                             SensorData singeSensor = new SensorData
                             {
@@ -117,7 +130,6 @@ namespace MonitoringBackend.Helpers
                                 YVibration = values[2] / 10.0, // 假设Y方向振动数据在第三个寄存器
                                 ZVibration = values[3] / 10.0, // 假设Z方向振动数据在第四个寄存器
                                 Vibration = values[4] / 10.0,   // 假设总振动数据在第五个寄存器
-                                AlarmRecord = alarmRecord,
                                 Timestamp = DateTime.Now
                             };
                             returnsensorData.Add(singeSensor);
@@ -151,8 +163,43 @@ namespace MonitoringBackend.Helpers
             {
                 online = false;
             }          
-            return (returnsensorData, online);
+            return (returnsensorData, online, alarmRecord);
 
         }
+        // 检查是否需要报警（仅在状态发生变化时返回 true）
+        //private (bool needAlarm, AlarmType type) CheckAndUpdateAlarm(int sensorId, float value, float lowThreshold, float highThreshold)
+        //{
+        //    var previousState = _sensorAlarmStates.TryGetValue(sensorId, out var prev) ? prev : AlarmState.Normal;
+        //    AlarmState currentState;
+
+        //    if (value > highThreshold)
+        //    {
+        //        currentState = AlarmState.HighAlarm;
+        //    }
+        //    else if (value < lowThreshold)
+        //    {
+        //        currentState = AlarmState.LowAlarm;
+        //    }
+        //    else
+        //    {
+        //        currentState = AlarmState.Normal;
+        //    }
+
+        //    // 状态未变 → 不报警
+        //    if (previousState == currentState)
+        //    {
+        //        return (false, AlarmType.None);
+        //    }
+
+        //    // 状态变了 → 更新状态并报警
+        //    _sensorAlarmStates[sensorId] = currentState;
+
+        //    return currentState switch
+        //    {
+        //        AlarmState.HighAlarm => (true, AlarmType.High),
+        //        AlarmState.LowAlarm => (true, AlarmType.Low),
+        //        _ => (false, AlarmType.None) // 状态恢复正常可以触发“恢复”事件
+        //    };
+        //}
     }
 }

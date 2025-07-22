@@ -4,6 +4,7 @@ using MonitoringBackend.Data;
 using MonitoringBackend.Helpers;
 using MonitoringBackend.Models;
 using System.Diagnostics;
+using System.Linq;
 using System.Text.Json;
 
 namespace MonitoringBackend.Service
@@ -64,6 +65,24 @@ namespace MonitoringBackend.Service
         {
             List<Gateway> gateways = await getGateways();
             List<Device> devices = await getDevices();
+            Dictionary<long, string> deviceData = devices.ToDictionary(d => d.id, d => d.name);
+
+
+            foreach (var gateway in gateways)
+            {
+                foreach (var sensor in gateway.sensors)
+                {
+                    if (deviceData.TryGetValue(sensor.device_id, out var deviceName))
+                    {
+                        sensor.device_name = deviceName;
+                    }
+                    else
+                    {
+                        sensor.device_name = "未知设备";
+                    }
+                }
+            }
+
             lock (_lock)
             {
                 foreach (Gateway item in gateways)

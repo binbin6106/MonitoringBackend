@@ -18,6 +18,7 @@ namespace MonitoringBackend.Service
         private readonly ILogger _logger;
         private Gateway gateway1 { get; }
         private readonly IHubContext<GatewayHub> _hubContext;
+        //private List<AlarmRecord> alarmRecords = new List<AlarmRecord>();
         public bool IsRunning => !_task.IsCompleted;
         private ModbusTcpHelper modbustcp;
         // 当前传感器的报警状态（高、低、正常）
@@ -27,9 +28,6 @@ namespace MonitoringBackend.Service
             HighAlarm,
             LowAlarm
         }
-
-        // 记录每个传感器的状态
-        private readonly Dictionary<int, AlarmState> _sensorAlarmStates = new();
 
         public enum AlarmType
         {
@@ -41,8 +39,6 @@ namespace MonitoringBackend.Service
         public GatewayCollectorTask(Gateway gateway, ILogger logger, IHubContext<GatewayHub> hubContext)
         {
             gateway1 = gateway;
-            string[] low_threshold_str = gateway.sensors[i].low_threshold.Split(',');
-            string[] up_threshold_str = gateway.sensors[i].up_threshold.Split(',');
             online = false;
             _cts = new CancellationTokenSource();
             _logger = logger;
@@ -57,8 +53,7 @@ namespace MonitoringBackend.Service
             
             while (!token.IsCancellationRequested)
             {
-                (List<SensorData> data, online) = modbustcp.getData();
-
+                (List<SensorData> data, online, Dictionary<int, AlarmRecord> alarmRecord) = modbustcp.getData();
 
                 var result = new
                 {
@@ -70,19 +65,18 @@ namespace MonitoringBackend.Service
                 };
 
                 var json = JsonSerializer.Serialize(result);
-
+                var alarm_json = JsonSerializer.Serialize(alarmRecord.Values.ToList());
                 await _hubContext.Clients.All.SendAsync("ReceiveGatewayData", json);
-                await _hubContext.Clients.All.SendAsync("Alarms", json);
-                foreach (var item in data)
-                {
-                    //await _alarmService.ProcessDataAsync(item.SensorId, "XVibration", (float)item.XVibration);
-                    //await _alarmService.ProcessDataAsync(item.SensorId, "YVibration", item.YVibration);
-                    //await _alarmService.ProcessDataAsync(item.SensorId, "ZVibration", item.ZVibration);
-                    //await _alarmService.ProcessDataAsync(item.SensorId, "Vibration", item.Vibration);
-                    //await _alarmService.ProcessDataAsync(item.SensorId, "Temperature", item.Temperature);
-                }
-                
-                await Task.Delay(2000, token); // 每秒采集
+                await _hubContext.Clients.All.SendAsync("Alarms", alarm_json);
+                //foreach (var item in data)
+                //{
+                //    //await _alarmService.ProcessDataAsync(item.SensorId, "XVibration", (float)item.XVibration);
+                //    //await _alarmService.ProcessDataAsync(item.SensorId, "YVibration", item.YVibration);
+                //    //await _alarmService.ProcessDataAsync(item.SensorId, "ZVibration", item.ZVibration);
+                //    //await _alarmService.ProcessDataAsync(item.SensorId, "Vibration", item.Vibration);
+                //    //await _alarmService.ProcessDataAsync(item.SensorId, "Temperature", item.Temperature);
+                //}
+                await Task.Delay(200, token); // 每秒采集
             }
             _logger.LogInformation($"[{gateway1.id}] 已停止采集。");
         }
@@ -91,42 +85,6 @@ namespace MonitoringBackend.Service
         {
                 _cts.Cancel();    
         }
-        // 检查是否需要报警（仅在状态发生变化时返回 true）
-        private (bool needAlarm, AlarmType type) CheckAndUpdateAlarm(int sensorId, float value, float lowThreshold, float highThreshold)
-        {
-            var previousState = _sensorAlarmStates.TryGetValue(sensorId, out var prev) ? prev : AlarmState.Normal;
-            AlarmState currentState;
-
-            if (value > highThreshold)
-            {
-                currentState = AlarmState.HighAlarm;
-            }
-            else if (value < lowThreshold)
-            {
-                currentState = AlarmState.LowAlarm;
-            }
-            else
-            {
-                currentState = AlarmState.Normal;
-            }
-
-            // 状态未变 → 不报警
-            if (previousState == currentState)
-            {
-                return (false, AlarmType.None);
-            }
-
-            // 状态变了 → 更新状态并报警
-            _sensorAlarmStates[sensorId] = currentState;
-
-            return currentState switch
-            {
-                AlarmState.HighAlarm => (true, AlarmType.High),
-                AlarmState.LowAlarm => (true, AlarmType.Low),
-                _ => (false, AlarmType.None) // 状态恢复正常可以触发“恢复”事件
-            };
-        }
-
     }
 
 }

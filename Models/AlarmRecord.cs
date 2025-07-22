@@ -4,6 +4,10 @@
     {
         public long id { get; set; }
         public long sensor_id { get; set; }
+        public int channel_id { get; set; }
+        public string? device_name { get; set; }
+        public string? sensor_name { get; set; }
+        public string? point_name { get; set; }
         public string alarmType { get; set; } = null!;
         public float alarmValue { get; set; }
         public float? thresholdMin { get; set; }
