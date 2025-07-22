@@ -16,8 +16,8 @@ builder.Services.Configure<InfluxSettings>(builder.Configuration.GetSection("Inf
 builder.Services.AddSingleton<InfluxService>();
 //builder.Services.AddHostedService<TcpListenerService>();
 builder.Services.AddSingleton<MultiDeviceCollectorService>();
-builder.Services.AddSingleton<AlarmThresholdCache>();
-builder.Services.AddScoped<AlarmService>();
+//builder.Services.AddSingleton<AlarmThresholdCache>();
+//builder.Services.AddScoped<AlarmService>();
 // ✅ 注册 CORS 服务
 builder.Services.AddCors(options =>
 {
@@ -65,7 +65,8 @@ app.UseAuthorization();   // 启用授权（处理 [Authorize] 特性）
 
 app.UseCors();
 
-app.MapHub<DeviceDataHub>("/sensorHub");
+//app.MapHub<DeviceDataHub>("/sensorHub");
+app.MapHub<GatewayHub>("/sensorHub");
 
 app.MapControllers();
 

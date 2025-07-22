@@ -6,6 +6,7 @@ namespace MonitoringBackend.Data
     {
         public DbSet<Device> Devices => Set<Device>();
         public DbSet<Sensor> Sensors => Set<Sensor>();
+        public DbSet<Gateway> Gateways => Set<Gateway>();
         public DbSet<AlarmThreshold> AlarmThresholds { get; set; }
         public DbSet<AlarmRecord> AlarmRecords { get; set; }
 
@@ -13,10 +14,10 @@ namespace MonitoringBackend.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<Device>()
+            modelBuilder.Entity<Gateway>()
                 .HasMany(d => d.sensors)
                 .WithOne()
-                .HasForeignKey(s => s.device_id)
+                .HasForeignKey(s => s.gateway_id)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<AlarmThreshold>()

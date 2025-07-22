@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using MonitoringBackend.Data;
 using MonitoringBackend.Helpers;
 using MonitoringBackend.Models;
 using System.Diagnostics;
@@ -8,19 +10,16 @@ namespace MonitoringBackend.Service
 {
     public class MultiDeviceCollectorService
     {
-        private readonly Dictionary<long, DeviceCollectorTask> _devices = new();
+        private readonly Dictionary<long, GatewayCollectorTask> _gateways = new();
         private readonly ILogger<MultiDeviceCollectorService> _logger;
-        private readonly IHubContext<DeviceDataHub> _hubContext;
+        private readonly IHubContext<GatewayHub> _hubContext;
         private readonly object _lock = new();
-        private readonly AlarmService _alarmService;
         //private List<Device> devices = new List<Device>();
 
-        public MultiDeviceCollectorService(ILogger<MultiDeviceCollectorService> logger, IHubContext<DeviceDataHub> hubContext, AlarmService alarmService)
+        public MultiDeviceCollectorService(ILogger<MultiDeviceCollectorService> logger, IHubContext<GatewayHub> hubContext)
         {
             _logger = logger;
             _hubContext = hubContext;
-            _alarmService = alarmService;
-
         }
 
         private async Task<List<Device>> getDevices()
@@ -33,12 +32,7 @@ namespace MonitoringBackend.Service
             try
             {
                 JsonElement data = root.GetProperty("data");
-                devices = JsonSerializer.Deserialize<List<Device>>(data.GetRawText());
-                //foreach (Device item in devices)
-                //{
-                //    ModbusTcpHelper modbustcp = new ModbusTcpHelper(item);
-                //}
-                
+                devices = JsonSerializer.Deserialize<List<Device>>(data.GetRawText());               
             }
             catch (InvalidOperationException ex)
             {
@@ -47,15 +41,39 @@ namespace MonitoringBackend.Service
             return devices;
         }
 
+        private async Task<List<Gateway>> getGateways()
+        {
+            HttpClient client = new HttpClient();
+            string response = await client.GetStringAsync("http://localhost:5000/gateways");
+            using JsonDocument doc = JsonDocument.Parse(response);
+            List<Gateway> gateways = new List<Gateway>();
+            JsonElement root = doc.RootElement;
+            try
+            {
+                JsonElement data = root.GetProperty("data");
+                gateways = JsonSerializer.Deserialize<List<Gateway>>(data.GetRawText());
+            }
+            catch (InvalidOperationException ex)
+            {
+                Debug.WriteLine($"操作无效：{ex.Message}");
+            }
+            return gateways;
+        }
+
         public async Task StartAllDevicesAsync()
         {
+            List<Gateway> gateways = await getGateways();
             List<Device> devices = await getDevices();
             lock (_lock)
             {
-                foreach (Device item in devices)
+                foreach (Gateway item in gateways)
                 {
-                    _devices[item.id] = new DeviceCollectorTask(item, _logger, _hubContext, _alarmService);
+                    _gateways[item.id] = new GatewayCollectorTask(item, _logger, _hubContext);
                 }
+                //foreach (Device item in devices)
+                //{
+                //    _devices[item.id] = new DeviceCollectorTask(item, _logger, _hubContext);
+                //}
             }
         }
 
@@ -63,11 +81,11 @@ namespace MonitoringBackend.Service
         {
             lock (_lock)
             {
-                foreach (var task in _devices.Values)
+                foreach (var task in _gateways.Values)
                 {
                     task.Stop();
                 }
-                _devices.Clear();
+                _gateways.Clear();
             }
         }
 
