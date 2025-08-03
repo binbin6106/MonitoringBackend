@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using MonitoringBackend.Data;
 using MonitoringBackend.Helpers;
 using MonitoringBackend.Models;
 using System.IdentityModel.Tokens.Jwt;
@@ -16,28 +18,45 @@ namespace MonitoringBackend.Controller
     public class AuthController : ControllerBase
     {
         private readonly JwtHelper _jwt;
-
-        public AuthController(IConfiguration config)
+        private readonly AppDbContext _context;
+        public AuthController(IConfiguration config, AppDbContext context)
         {
             _jwt = new JwtHelper(config);
+            _context = context;
         }
 
         [HttpPost("login")]
-        public IActionResult Login([FromBody] Models.LoginRequest request)
+        public async Task <IActionResult> Login([FromBody] Models.LoginRequest request)
         {
-            Console.WriteLine(request);
-            // 模拟用户验证（实际应查数据库）
-            if (request.Username == "admin" && request.Password == Md5Helper.Encrypt("123456"));
+            // 从数据库查找用户
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.username == request.Username && u.password == request.Password);
+
+            if (user == null)
             {
-                var user = new User { Id = 1, Username = "admin" };
-                var token = _jwt.GenerateToken(user);
-
-                var result = ApiResponse<object>.Success(new { access_token = token });
-
-                return Ok(result);  // 返回 JSON 格式
+                return Unauthorized(ApiResponse<object>.Fail("用户名或密码错误"));
             }
+            if (!user.isEnabled)
+            {
+                return Unauthorized(ApiResponse<string>.Fail("用户已被禁用"));
+            }
+                
+            /// 生成 JWT token
+            var token = _jwt.GenerateToken(user);
 
-            return Unauthorized("Invalid credentials");
+            var result = ApiResponse<object>.Success(new
+            {
+                access_token = token
+            });
+
+            return Ok(result);
+        }
+
+        [Authorize]
+        [HttpPost("logout")]
+        public IActionResult Logout()
+        {
+            return Ok(ApiResponse<object>.Success("登出成功"));
         }
 
         [Authorize]

@@ -27,8 +27,13 @@ public class InfluxService
         {
             var point = PointData
             .Measurement("sensor_data")
-            .Tag("sensorId", data.SensorId.ToString())
+            .Tag("sensor_id", data.SensorId.ToString())
+            .Tag("device_id", data.DeviceId.ToString())
+            .Tag("gateway_id", data.GatewayId.ToString())
             .Field("temperature", data.Temperature)
+            .Field("x_vibration", data.XVibration)
+            .Field("y_vibration", data.YVibration)
+            .Field("z_vibration", data.ZVibration)
             .Field("vibration", data.Vibration)
             .Timestamp(data.Timestamp.ToUniversalTime(), WritePrecision.Ms);
 
@@ -49,7 +54,12 @@ public class InfluxService
             var point = PointData
                 .Measurement("sensor_data")
                 .Tag("sensor_id", data.SensorId.ToString())
+                .Tag("device_id", data.DeviceId.ToString())
+                .Tag("gateway_id", data.GatewayId.ToString())
                 .Field("temperature", data.Temperature)
+                .Field("x_vibration", data.XVibration)
+                .Field("y_vibration", data.YVibration)
+                .Field("z_vibration", data.ZVibration)
                 .Field("vibration", data.Vibration)
                 .Timestamp(data.Timestamp, WritePrecision.Ns);
 

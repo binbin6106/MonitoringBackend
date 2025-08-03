@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Net.Sockets;
 using InfluxDB.Client.Api.Domain;
-using Modbus.Device;
+using NModbus;
 using MonitoringBackend.Models; // NModbus4 的命名空间
 
 namespace MonitoringBackend.Helpers
@@ -17,7 +17,7 @@ namespace MonitoringBackend.Helpers
 
         private ushort[] ModbusAddress { get; set; } = {0x0002,  0x0012, 0x0022, 0x0032};
         private ushort[] ModbusCoilAddress { get; set; } = { 0x0000, 0x0002, 0x0004, 0x0006 };
-        public Dictionary<int, AlarmRecord> alarmRecord = new Dictionary<int, AlarmRecord>();
+        public Dictionary<string, AlarmRecord> alarmRecord = new Dictionary<string, AlarmRecord>();
         private float[] low_threshold = new float[5];
         private float[] up_threshold = new float[5];
         public string[] point_sign = { "温度", "X方向振动", "Y方向振动", "Z方向振动", "振动矢量和" };
@@ -29,7 +29,7 @@ namespace MonitoringBackend.Helpers
             SlaveId = 1;            // 从站ID
         }
 
-        public (List<SensorData>, bool, Dictionary<int, AlarmRecord>) getData()
+        public (List<SensorData>, bool, Dictionary<string, AlarmRecord>) getData()
         {
             returnsensorData.Clear();
             bool online = false;
@@ -38,8 +38,9 @@ namespace MonitoringBackend.Helpers
                 // 创建 TCP 客户端
                 using (TcpClient client = new TcpClient(gateway.ip, Port))
                 {
+                    var factory = new ModbusFactory();
                     // 创建 Modbus TCP Master（主站）
-                    var master = ModbusIpMaster.CreateIp(client);
+                    var master = factory.CreateMaster(client);
 
                     for (int i = 0; i < gateway.sensors.Count; i++)
                     {
@@ -63,17 +64,19 @@ namespace MonitoringBackend.Helpers
                                 for (int q = 0; q < 5; q++)
                                 {
                                     float nowVaule = values[q] / 10.0f;
-                                    bool isNowAlarm = alarmRecord.TryGetValue(q, out AlarmRecord prevAlarm) ? true : false;
+                                    string index = i.ToString() + '.' + q.ToString();
+                                    bool isNowAlarm = alarmRecord.TryGetValue(index, out AlarmRecord prevAlarm) ? true : false;
                                     //不处于报警状态时，才会去判断阈值
                                     if (!isNowAlarm)
                                     {
                                         if (nowVaule >= up_threshold[q])
                                         {
-                                            alarmRecord.Add(q,
+                                            alarmRecord.Add(index,
                                                 new AlarmRecord
                                                 {
                                                     sensor_id = gateway.sensors[i].id,
                                                     channel_id = q,
+                                                    device_id = gateway.sensors[i].device_id,
                                                     device_name = gateway.sensors[i].device_name,
                                                     sensor_name = gateway.sensors[i].name,
                                                     point_name = point_sign[q],
@@ -89,11 +92,12 @@ namespace MonitoringBackend.Helpers
                                         }
                                         if (nowVaule <= low_threshold[q])
                                         {
-                                            alarmRecord.Add(q,
+                                            alarmRecord.Add(index,
                                                     new AlarmRecord
                                                     {
                                                         sensor_id = gateway.sensors[i].id,
                                                         channel_id = q,
+                                                        device_id = gateway.sensors[i].device_id,
                                                         device_name = gateway.sensors[i].device_name,
                                                         sensor_name = gateway.sensors[i].name,
                                                         point_name = point_sign[q],
@@ -113,7 +117,7 @@ namespace MonitoringBackend.Helpers
                                     {
                                         if (nowVaule < up_threshold[q] && nowVaule > low_threshold[q])
                                         {
-                                            alarmRecord.Remove(q);
+                                            alarmRecord.Remove(index);
                                         }
                                     }
                                 }

@@ -4,6 +4,7 @@ namespace MonitoringBackend.Data
 {
     public class AppDbContext : DbContext
     {
+        public DbSet<User> Users { get; set; }
         public DbSet<Device> Devices => Set<Device>();
         public DbSet<Sensor> Sensors => Set<Sensor>();
         public DbSet<Gateway> Gateways => Set<Gateway>();

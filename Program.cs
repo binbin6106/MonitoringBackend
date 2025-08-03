@@ -12,12 +12,13 @@ var builder = WebApplication.CreateBuilder(args);
 // 注册 SignalR 和后台服务
 builder.Services.AddSignalR();
 builder.Services.AddControllers();
-builder.Services.Configure<InfluxSettings>(builder.Configuration.GetSection("InfluxDB"));
-builder.Services.AddSingleton<InfluxService>();
+//builder.Services.Configure<InfluxSettings>(builder.Configuration.GetSection("InfluxDB"));
+//builder.Services.AddSingleton<InfluxService>();
 //builder.Services.AddHostedService<TcpListenerService>();
 builder.Services.AddSingleton<MultiDeviceCollectorService>();
 //builder.Services.AddSingleton<AlarmThresholdCache>();
 //builder.Services.AddScoped<AlarmService>();
+//开发环境
 // ✅ 注册 CORS 服务
 builder.Services.AddCors(options =>
 {
@@ -30,6 +31,18 @@ builder.Services.AddCors(options =>
             .AllowCredentials();
     });
 });
+//生产环境
+//builder.Services.AddCors(options =>
+//{
+//    options.AddDefaultPolicy(policy =>
+//    {
+//        policy
+//            .WithOrigins("http://demo.cyblog.top")
+//            .AllowAnyHeader()
+//            .AllowAnyMethod()
+//            .AllowCredentials();
+//    });
+//});
 
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
@@ -37,9 +50,9 @@ builder.Services.AddAuthentication("Bearer")
         var config = builder.Configuration.GetSection("JwtSettings");
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = false,
             ValidateIssuerSigningKey = true,
             ValidIssuer = config["Issuer"],
             ValidAudience = config["Audience"],
@@ -51,7 +64,8 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql("server=39.106.56.86;port=33060;database=monitor;user=root;password=zhangwenbin123;", ServerVersion.AutoDetect("server=39.106.56.86;port=33060;database=monitor;user=root;password=zhangwenbin123;")));
-    //options.UseMySql("server=rm-m5e5bp66w746nb36muo.mysql.rds.aliyuncs.com;port=3306;database=monitor;user=monitor;password=Zhangwenbin123!;", ServerVersion.AutoDetect("server=rm-m5e5bp66w746nb36muo.mysql.rds.aliyuncs.com;port=3306;database=monitor;user=monitor;password=Zhangwenbin123!;")));
+//options.UseMySql("server=127.0.0.1;port=33060;database=monitor;user=root;password=zhangwenbin123;", ServerVersion.AutoDetect("server=39.106.56.86;port=33060;database=monitor;user=root;password=zhangwenbin123;")));
+//options.UseMySql("server=rm-m5e5bp66w746nb36muo.mysql.rds.aliyuncs.com;port=3306;database=monitor;user=monitor;password=Zhangwenbin123!;", ServerVersion.AutoDetect("server=rm-m5e5bp66w746nb36muo.mysql.rds.aliyuncs.com;port=3306;database=monitor;user=monitor;password=Zhangwenbin123!;")));
 builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
