@@ -49,11 +49,10 @@ namespace MonitoringBackend.Controller
                 {
                     existing.name = sensor.name;
                     existing.type = sensor.type;
-                    existing.unit = sensor.unit;
+                    existing.device_id = sensor.device_id;
                 }
                 else
                 {
-                    sensor.gateway_id = gateway.id;
                     gateway.sensors.Add(sensor);
                 }
             }

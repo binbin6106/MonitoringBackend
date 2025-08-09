@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MonitoringBackend.Data;
 using MonitoringBackend.Models;
+using System.Security.Cryptography;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
@@ -25,26 +26,28 @@ namespace MonitoringBackend.Controller
         }
 
         // 添加用户
-        [HttpPost]
+        [Authorize]
+        [HttpPost("add")]
         public async Task<IActionResult> AddUser([FromBody] User user)
         {
+            if (user == null) return NotFound();
+            user.password = Md5Helper.Encrypt("123456");
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
             return Ok(ApiResponse<object>.Success(""));
         }
 
         // 更新用户
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateUser(long id, [FromBody] User updated)
+        [Authorize]
+        [HttpPost("edit")]
+        public async Task<IActionResult> UpdateUser([FromBody] User updated)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.id == id);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.id == updated.id);
             if (user == null) return NotFound();
 
             user.username = updated.username;
             user.email = updated.email;
             user.role = updated.role;
-            user.password = updated.password;
-            user.isEnabled = updated.isEnabled;
 
             await _context.SaveChangesAsync();
             return Ok(ApiResponse<object>.Success(user));
@@ -78,7 +81,18 @@ namespace MonitoringBackend.Controller
             return Ok(ApiResponse<object>.Success("删除成功"));
         }
 
+        [Authorize]
+        [HttpPost("rest_password")]
+        public async Task<IActionResult> ResetPassword([FromBody] User updated)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.id == updated.id);
+            if (user == null) return NotFound();
 
+            user.password = Md5Helper.Encrypt("123456");
+
+            await _context.SaveChangesAsync();
+            return Ok(ApiResponse<object>.Success("重置密码成功"));
+        }
 
         // 切换启用状态
         [HttpPatch("{id}/toggle")]

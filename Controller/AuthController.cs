@@ -6,10 +6,12 @@ using Microsoft.IdentityModel.Tokens;
 using MonitoringBackend.Data;
 using MonitoringBackend.Helpers;
 using MonitoringBackend.Models;
+using Newtonsoft.Json.Linq;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Nodes;
 
 namespace MonitoringBackend.Controller
 {
@@ -50,6 +52,35 @@ namespace MonitoringBackend.Controller
             });
 
             return Ok(result);
+        }
+
+        [Authorize]
+        [HttpGet("list")]
+        public IActionResult GetRoutes()
+        {
+            var username = User.Identity?.Name;
+            var role = User.FindFirst(ClaimTypes.Role)?.Value;
+            var json = "";
+            if (role == "admin")
+            {
+                json = System.IO.File.ReadAllText("Data/AdminRouter.json"); // 或者直接在代码中写入字符串
+            }
+            else if (role == "user")
+            {
+                json = System.IO.File.ReadAllText("Data/UserRouter.json"); // 或者直接在代码中写入字符串
+            }
+            else {; }
+
+            //var obj = Newtonsoft.Json.JsonConvert.DeserializeObject<object>(json);
+            var routes = JsonNode.Parse(json);
+            var responseObject = new JsonObject
+            {
+                // 像字典一样直接添加属性
+                ["code"] = 200,
+                ["msg"] = "成功",
+                ["data"] = routes // 直接把从文件读取的 JsonNode 赋值给 data 属性
+            };
+            return Ok(responseObject);
         }
 
         [Authorize]

@@ -21,14 +21,15 @@ namespace MonitoringBackend.Helpers
         {
             var point = PointData
                 .Measurement("sensor_data")
-                .Tag("SensorId", data.SensorId.ToString())
-                .Tag("DeviceId", data.DeviceId.ToString())
-                .Tag("GatewayId", data.GatewayId.ToString())
-                .Field("Temperature", data.Temperature)
-                .Field("XVibration", data.XVibration)
-                .Field("YVibration", data.YVibration)
-                .Field("ZVibration", data.ZVibration)
-                .Field("Vibration", data.Vibration)
+                .Tag("sensor_id", data.SensorId.ToString())
+                .Tag("device_id", data.DeviceId.ToString())
+                .Tag("gateway_id", data.GatewayId.ToString())
+                .Field("temperature", data.Temperature)
+                .Field("x_vibration", data.XVibration)
+                .Field("y_vibration", data.YVibration)
+                .Field("z_vibration", data.ZVibration)
+                .Field("vibration", data.Vibration)
+                .Field("rpm", data.RPM)
                 .Timestamp(data.Timestamp, WritePrecision.Ns);
 
             await _writeApi.WritePointAsync(point, _bucket, _org);
@@ -50,6 +51,7 @@ namespace MonitoringBackend.Helpers
                     .Field("y_vibration", data.YVibration)
                     .Field("z_vibration", data.ZVibration)
                     .Field("vibration", data.Vibration)
+                    .Field("rpm", data.RPM)
                     .Timestamp(data.Timestamp, WritePrecision.Ns);
 
                 points.Add(point);

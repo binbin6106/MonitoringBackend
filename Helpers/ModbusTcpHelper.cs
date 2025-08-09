@@ -14,8 +14,7 @@ namespace MonitoringBackend.Helpers
         private List<SensorData> returnsensorData { get; set; } = new List<SensorData>();
         private int Port { get; set; }
         private byte SlaveId { get; set; }
-
-        private ushort[] ModbusAddress { get; set; } = {0x0002,  0x0012, 0x0022, 0x0032};
+        private ushort[] ModbusAddress = {0x4000, 0x4006, 0x400C, 0x4012, 0x4018, 0x401E, 0x4024, 0x402A};
         private ushort[] ModbusCoilAddress { get; set; } = { 0x0000, 0x0002, 0x0004, 0x0006 };
         public Dictionary<string, AlarmRecord> alarmRecord = new Dictionary<string, AlarmRecord>();
         private float[] low_threshold = new float[5];
@@ -41,37 +40,62 @@ namespace MonitoringBackend.Helpers
                     var factory = new ModbusFactory();
                     // 创建 Modbus TCP Master（主站）
                     var master = factory.CreateMaster(client);
-
+                    ushort numRegisters = 0;
                     for (int i = 0; i < gateway.sensors.Count; i++)
-                    {
-                        if (gateway.sensors[i].type == "IOLink")
+                    {                
+                        if (gateway.sensors[i].type == "RPM")
                         {
-                            // 读取保持寄存器（功能码 0x03）
-                            // 例如读取地址 0x0002（对应传统地址 40003），共读取 1 个寄存器
-                            ushort startAddress = ModbusAddress[i];
-                            ushort numRegisters = 5;
-                            ushort[] values = master.ReadHoldingRegisters(SlaveId, startAddress, numRegisters);
-                            
+                            numRegisters = 6; // 读取6个寄存器
+                        }
+                        else
+                        {
+                            numRegisters = 5; // 读取5个寄存器
+                        }
+                        ushort[] values = new ushort[6];
+                        ushort startAddress = ModbusAddress[i];
+                        ushort[] tempValues = master.ReadHoldingRegisters(SlaveId, startAddress, numRegisters);
+                        Array.Copy(tempValues, values, Math.Min(numRegisters, values.Length));
 
-                            if (gateway.sensors[i].low_threshold != null && gateway.sensors[i].up_threshold != null)
+                        if (gateway.sensors[i].low_threshold != null && gateway.sensors[i].up_threshold != null)
+                        {
+                            string[] low_threshold_str = gateway.sensors[i].low_threshold.Split(',');
+                            string[] up_threshold_str = gateway.sensors[i].up_threshold.Split(',');
+
+                            low_threshold = low_threshold_str.Select(p => float.Parse(p)).ToArray();
+                            up_threshold = up_threshold_str.Select(p => float.Parse(p)).ToArray();
+
+                            for (int q = 0; q < 5; q++)
                             {
-                                string[] low_threshold_str = gateway.sensors[i].low_threshold.Split(',');
-                                string[] up_threshold_str = gateway.sensors[i].up_threshold.Split(',');
-
-                                low_threshold = low_threshold_str.Select(p => float.Parse(p)).ToArray();
-                                up_threshold = up_threshold_str.Select(p => float.Parse(p)).ToArray();
-
-                                for (int q = 0; q < 5; q++)
+                                float nowVaule = values[q] / 10.0f;
+                                string index = i.ToString() + '.' + q.ToString();
+                                bool isNowAlarm = alarmRecord.TryGetValue(index, out AlarmRecord prevAlarm) ? true : false;
+                                //不处于报警状态时，才会去判断阈值
+                                if (!isNowAlarm)
                                 {
-                                    float nowVaule = values[q] / 10.0f;
-                                    string index = i.ToString() + '.' + q.ToString();
-                                    bool isNowAlarm = alarmRecord.TryGetValue(index, out AlarmRecord prevAlarm) ? true : false;
-                                    //不处于报警状态时，才会去判断阈值
-                                    if (!isNowAlarm)
+                                    if (nowVaule >= up_threshold[q])
                                     {
-                                        if (nowVaule >= up_threshold[q])
-                                        {
-                                            alarmRecord.Add(index,
+                                        alarmRecord.Add(index,
+                                            new AlarmRecord
+                                            {
+                                                sensor_id = gateway.sensors[i].id,
+                                                channel_id = q,
+                                                device_id = gateway.sensors[i].device_id,
+                                                device_name = gateway.sensors[i].device_name,
+                                                sensor_name = gateway.sensors[i].name,
+                                                point_name = point_sign[q],
+                                                alarmType = "High",
+                                                alarmValue = nowVaule, // 假设寄存器值需要除以10转换为实际值
+                                                thresholdMin = low_threshold[q],
+                                                thresholdMax = up_threshold[q],
+                                                alarmLevel = "Danger",
+                                                alarmTime = DateTime.Now,
+                                                handled = false
+                                            }
+                                        );
+                                    }
+                                    if (nowVaule <= low_threshold[q])
+                                    {
+                                        alarmRecord.Add(index,
                                                 new AlarmRecord
                                                 {
                                                     sensor_id = gateway.sensors[i].id,
@@ -80,84 +104,44 @@ namespace MonitoringBackend.Helpers
                                                     device_name = gateway.sensors[i].device_name,
                                                     sensor_name = gateway.sensors[i].name,
                                                     point_name = point_sign[q],
-                                                    alarmType = "High",
+                                                    alarmType = "Low",
                                                     alarmValue = nowVaule, // 假设寄存器值需要除以10转换为实际值
                                                     thresholdMin = low_threshold[q],
                                                     thresholdMax = up_threshold[q],
                                                     alarmLevel = "Danger",
                                                     alarmTime = DateTime.Now,
-                                                    handled = false                         
+                                                    handled = false
                                                 }
                                             );
-                                        }
-                                        if (nowVaule <= low_threshold[q])
-                                        {
-                                            alarmRecord.Add(index,
-                                                    new AlarmRecord
-                                                    {
-                                                        sensor_id = gateway.sensors[i].id,
-                                                        channel_id = q,
-                                                        device_id = gateway.sensors[i].device_id,
-                                                        device_name = gateway.sensors[i].device_name,
-                                                        sensor_name = gateway.sensors[i].name,
-                                                        point_name = point_sign[q],
-                                                        alarmType = "Low",
-                                                        alarmValue = nowVaule, // 假设寄存器值需要除以10转换为实际值
-                                                        thresholdMin = low_threshold[q],
-                                                        thresholdMax = up_threshold[q],
-                                                        alarmLevel = "Danger",
-                                                        alarmTime = DateTime.Now,
-                                                        handled = false
-                                                    }
-                                                );
-                                        }
                                     }
-                                    //处于报警状态时，判断值是否恢复正常
-                                    else
+                                }
+                                //处于报警状态时，判断值是否恢复正常
+                                else
+                                {
+                                    if (nowVaule < up_threshold[q] && nowVaule > low_threshold[q])
                                     {
-                                        if (nowVaule < up_threshold[q] && nowVaule > low_threshold[q])
-                                        {
-                                            alarmRecord.Remove(index);
-                                        }
+                                        alarmRecord.Remove(index);
                                     }
                                 }
                             }
-
-                            SensorData singeSensor = new SensorData
-                            {
-                                SensorId = gateway.sensors[i].id,
-                                Name = gateway.sensors[i].name,
-                                DeviceId = gateway.sensors[i].device_id,
-                                GatewayId = gateway.sensors[i].gateway_id,
-                                Temperature = values[0] / 10.0, // 假设温度数据在第一个寄存器
-                                XVibration = values[1] / 10.0, // 假设X方向振动数据在第二个寄存器
-                                YVibration = values[2] / 10.0, // 假设Y方向振动数据在第三个寄存器
-                                ZVibration = values[3] / 10.0, // 假设Z方向振动数据在第四个寄存器
-                                Vibration = values[4] / 10.0,   // 假设总振动数据在第五个寄存器
-                                Timestamp = DateTime.Now
-                            };
-                            returnsensorData.Add(singeSensor);
                         }
-                        else if (gateway.sensors[i].type == "DI")
+
+                        SensorData singeSensor = new SensorData
                         {
-                            ushort startAddress = ModbusCoilAddress[i];
-                            ushort numRegisters = 1;
-                            bool[] values = master.ReadInputs(SlaveId, startAddress, numRegisters);
-                            SensorData singeSensor = new SensorData
-                            {
-                                SensorId = gateway.sensors[i].id,
-                                DeviceId = gateway.sensors[i].device_id,
-                                GatewayId = gateway.sensors[i].gateway_id,
-                                Temperature = 0.0, // 假设温度数据在第一个寄存器
-                                XVibration = 0.0, // 假设X方向振动数据在第二个寄存器
-                                YVibration = 0.0, // 假设Y方向振动数据在第三个寄存器
-                                ZVibration = 0.0, // 假设Z方向振动数据在第四个寄存器
-                                Vibration = values[0] == true ? 1.0 : 0.0,   // 假设总振动数据在第五个寄存器
-                                Timestamp = DateTime.Now
-                            };
-                            returnsensorData.Add(singeSensor);
-                        }
-
+                            SensorId = gateway.sensors[i].id,
+                            SensorType = gateway.sensors[i].type,
+                            Name = gateway.sensors[i].name,
+                            DeviceId = gateway.sensors[i].device_id,
+                            GatewayId = gateway.sensors[i].gateway_id,
+                            Temperature = values[0] / 10.0,
+                            XVibration = values[4] / 1000.0,
+                            YVibration = values[3] / 1000.0,
+                            ZVibration = values[2] / 1000.0,
+                            Vibration = values[1] / 1000.0,
+                            RPM = values[5],
+                            Timestamp = DateTime.Now
+                        };
+                        returnsensorData.Add(singeSensor);
                     }
                     online = true;
                 }

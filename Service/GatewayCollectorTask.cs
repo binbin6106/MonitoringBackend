@@ -70,7 +70,7 @@ namespace MonitoringBackend.Service
                 var alarm_json = JsonSerializer.Serialize(alarmRecord.Values.ToList());
                 await _hubContext.Clients.All.SendAsync("ReceiveGatewayData", json);
                 await _hubContext.Clients.All.SendAsync("Alarms", alarm_json);
-                //await influx.WriteSensorBatchAsync(data);
+                await influx.WriteSensorBatchAsync(data);
                 //foreach (var item in data)
                 //{
                 //    //await _alarmService.ProcessDataAsync(item.SensorId, "XVibration", (float)item.XVibration);
