@@ -21,7 +21,7 @@ namespace MonitoringBackend.Service
         //private List<AlarmRecord> alarmRecords = new List<AlarmRecord>();
         public bool IsRunning => !_task.IsCompleted;
         private ModbusTcpHelper modbustcp;
-        private InfluxDbHelper influx = new InfluxDbHelper("http://localhost:8086", "IaT2CIzqHzwnD1dbuMeCT661ERS3TlamtspVYXwjygK13ZoNXPDsA5Pu2Ga5xHngIjkMJXKSGcR_dY0tyCpl1A==");
+        private readonly InfluxDbHelper _influxDbHelper;
         // 当前传感器的报警状态（高、低、正常）
         private enum AlarmState
         {
@@ -37,7 +37,7 @@ namespace MonitoringBackend.Service
             Low
         }
 
-        public GatewayCollectorTask(Gateway gateway, ILogger logger, IHubContext<GatewayHub> hubContext)
+        public GatewayCollectorTask(Gateway gateway, ILogger logger, IHubContext<GatewayHub> hubContext, InfluxDbHelper influxDbHelper)
         {
             gateway1 = gateway;
             gateway1.sensors = gateway.sensors.OrderBy(s => s.id).ToList();
@@ -45,6 +45,7 @@ namespace MonitoringBackend.Service
             _cts = new CancellationTokenSource();
             _logger = logger;
             _hubContext = hubContext;
+            _influxDbHelper = influxDbHelper;
             _task = Task.Run(() => Run(_cts.Token));
         }
 
@@ -70,7 +71,7 @@ namespace MonitoringBackend.Service
                 var alarm_json = JsonSerializer.Serialize(alarmRecord.Values.ToList());
                 await _hubContext.Clients.All.SendAsync("ReceiveGatewayData", json);
                 await _hubContext.Clients.All.SendAsync("Alarms", alarm_json);
-                await influx.WriteSensorBatchAsync(data);
+                await _influxDbHelper.WriteSensorBatchAsync(data);
                 //foreach (var item in data)
                 //{
                 //    //await _alarmService.ProcessDataAsync(item.SensorId, "XVibration", (float)item.XVibration);
@@ -79,7 +80,7 @@ namespace MonitoringBackend.Service
                 //    //await _alarmService.ProcessDataAsync(item.SensorId, "Vibration", item.Vibration);
                 //    //await _alarmService.ProcessDataAsync(item.SensorId, "Temperature", item.Temperature);
                 //}
-                await Task.Delay(2000, token); // 每秒采集
+                await Task.Delay(1000, token); // 每秒采集
             }
             _logger.LogInformation($"[{gateway1.id}] 已停止采集。");
         }

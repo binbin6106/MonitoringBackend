@@ -17,9 +17,9 @@ namespace MonitoringBackend.Controller
         }
         [Consumes("multipart/form-data")]
         [HttpPost("upload")]
-        public async Task<IActionResult> UploadImage([FromForm(Name = "file")] IFormFile file)
+        public async Task<IActionResult> UploadImage([FromForm] FileUploadRequest request)
         {
-            if (file == null || file.Length == 0)
+            if (request.file == null || request.file.Length == 0)
                 return BadRequest("文件为空");
 
             // 创建保存路径
@@ -31,18 +31,18 @@ namespace MonitoringBackend.Controller
             }
 
             // 生成唯一文件名
-            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(request.file.FileName)}";
             var filePath = Path.Combine(uploadsFolder, fileName);
 
             // 保存图片
             using (var stream = new FileStream(filePath, FileMode.Create))
             {
-                await file.CopyToAsync(stream);
+                await request.file.CopyToAsync(stream);
             }
 
             // 构造图片访问URL
-            var request = _httpContextAccessor.HttpContext?.Request;
-            var baseUrl = $"{request?.Scheme}://{request?.Host}";
+            var request_1 = _httpContextAccessor.HttpContext?.Request;
+            var baseUrl = $"{request_1?.Scheme}://{request_1?.Host}";
             var imageUrl = $"{baseUrl}/uploads/{fileName}";
 
             return Ok(ApiResponse<object>.Success(new
@@ -50,5 +50,11 @@ namespace MonitoringBackend.Controller
                 fileUrl = imageUrl
             }));
         }
+    }
+
+    public class FileUploadRequest
+    {
+        // 属性名可以随意，但要与表单中的字段名对应
+        public IFormFile file { get; set; }
     }
 }

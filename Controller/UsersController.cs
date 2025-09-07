@@ -21,7 +21,15 @@ namespace MonitoringBackend.Controller
         [HttpGet]
         public async Task<IActionResult> GetUsers()
         {
-            var result = ApiResponse<object>.Success(await _context.Users.ToListAsync());
+            var result = ApiResponse<object>.Success(await _context.Users
+                .Select(u => new { 
+                    u.id,
+                    u.username,
+                    u.email,
+                    u.role,
+                    u.isEnabled
+                })
+                .ToListAsync());
             return Ok(result);
         }
 

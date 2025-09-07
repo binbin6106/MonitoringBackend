@@ -40,7 +40,7 @@ namespace MonitoringBackend.Controller
             device.name = updated.name;
             device.location = updated.location;
             device.description = updated.description;
-            device.image = updated.image;
+            device.model = updated.model;
 
             await _context.SaveChangesAsync();
             return Ok(device);
@@ -54,6 +54,19 @@ namespace MonitoringBackend.Controller
             _context.Devices.Remove(device);
             await _context.SaveChangesAsync();
             return Ok(ApiResponse<object>.Success(""));
+        }
+
+        [HttpGet("sensors")]
+        public async Task<IActionResult> GetSensors([FromQuery] int device_id)
+        {
+            var query = _context.Sensors.AsQueryable();
+
+            query = query.Where(d => d.device_id == device_id);
+
+            var devices = await query.ToListAsync();
+
+            var result = ApiResponse<object>.Success(devices);
+            return Ok(result);
         }
     }
 

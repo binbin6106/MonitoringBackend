@@ -15,12 +15,14 @@ namespace MonitoringBackend.Service
         private readonly ILogger<MultiDeviceCollectorService> _logger;
         private readonly IHubContext<GatewayHub> _hubContext;
         private readonly object _lock = new();
+        private readonly InfluxDbHelper _influxDbHelper;
         //private List<Device> devices = new List<Device>();
 
-        public MultiDeviceCollectorService(ILogger<MultiDeviceCollectorService> logger, IHubContext<GatewayHub> hubContext)
+        public MultiDeviceCollectorService(ILogger<MultiDeviceCollectorService> logger, IHubContext<GatewayHub> hubContext, InfluxDbHelper influxDbHelper)
         {
             _logger = logger;
             _hubContext = hubContext;
+            _influxDbHelper = influxDbHelper;
         }
 
         private async Task<List<Device>> getDevices()
@@ -63,6 +65,15 @@ namespace MonitoringBackend.Service
 
         public async Task StartAllDevicesAsync()
         {
+            lock (_lock)
+            {
+                if (_gateways.Count > 0)
+                {
+                    _logger.LogInformation("采集任务已在运行，跳过启动");
+                    return;
+                }
+            }
+
             List<Gateway> gateways = await getGateways();
             List<Device> devices = await getDevices();
             Dictionary<long, string> deviceData = devices.ToDictionary(d => d.id, d => d.name);
@@ -87,7 +98,7 @@ namespace MonitoringBackend.Service
             {
                 foreach (Gateway item in gateways)
                 {
-                    _gateways[item.id] = new GatewayCollectorTask(item, _logger, _hubContext);
+                    _gateways[item.id] = new GatewayCollectorTask(item, _logger, _hubContext, _influxDbHelper);
                 }
                 //foreach (Device item in devices)
                 //{
@@ -107,38 +118,6 @@ namespace MonitoringBackend.Service
                 _gateways.Clear();
             }
         }
-
-        //public bool StopDevice(string deviceId)
-        //{
-        //    lock (_lock)
-        //    {
-        //        if (!_devices.TryGetValue(deviceId, out var task))
-        //            return false;
-
-        //        task.Stop();
-        //        _devices.Remove(deviceId);
-        //        return true;
-        //    }
-        //}
-
-        //public List<string> GetRunningDevices()
-        //{
-        //    lock (_lock)
-        //    {
-        //        return _devices
-        //            .Where(kvp => kvp.Value.IsRunning)
-        //            .Select(kvp => kvp.Key)
-        //            .ToList();
-        //    }
-        //}
-
-        //public bool IsDeviceRunning(string deviceId)
-        //{
-        //    lock (_lock)
-        //    {
-        //        return _devices.ContainsKey(deviceId) && _devices[deviceId].IsRunning;
-        //    }
-        //}
     }
 
 }

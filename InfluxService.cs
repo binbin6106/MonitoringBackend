@@ -11,10 +11,9 @@ public class InfluxService
     private readonly InfluxDBClient _client;
     private readonly string _bucket;
     private readonly string _org;
-    //private static readonly char[] Token = "IaT2CIzqHzwnD1dbuMeCT661ERS3TlamtspVYXwjygK13ZoNXPDsA5Pu2Ga5xHngIjkMJXKSGcR_dY0tyCpl1A==".ToCharArray();
+   
     public InfluxService(IOptions<InfluxSettings> settings)
     {
-        //_client = new InfluxDBClient("http://localhost:8086", "IaT2CIzqHzwnD1dbuMeCT661ERS3TlamtspVYXwjygK13ZoNXPDsA5Pu2Ga5xHngIjkMJXKSGcR_dY0tyCpl1A==");
         var opts = settings.Value;
         _client = InfluxDBClientFactory.Create(opts.Url, opts.Token.ToCharArray());
         _bucket = opts.Bucket;
