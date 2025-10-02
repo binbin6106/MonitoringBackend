@@ -96,6 +96,20 @@
           "isAffix": false,
           "isKeepAlive": true
         }
+      },
+      {
+        "path": "/system/thresholdManage",
+        "name": "thresholdManage",
+        "component": "/system/thresholdManage/index",
+        "meta": {
+          "icon": "Setting",
+          "title": "阈值管理",
+          "isLink": "",
+          "isHide": false,
+          "isFull": false,
+          "isAffix": false,
+          "isKeepAlive": true
+        }
       }
     ]
   }

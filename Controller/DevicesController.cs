@@ -68,6 +68,19 @@ namespace MonitoringBackend.Controller
             var result = ApiResponse<object>.Success(devices);
             return Ok(result);
         }
+        [HttpGet("online")]
+        public async Task<IActionResult> GetOnlineStats()
+        {
+            var total = await _context.Sensors.CountAsync();
+            var online = DeviceStatusStore.OnlineStatus.Values.Count(v => v);
+            var result = ApiResponse<object>.Success(new
+            {
+                Total = total,
+                Online = online,
+                Offline = total - online
+            });
+            return Ok(result);
+        }
     }
 
 }

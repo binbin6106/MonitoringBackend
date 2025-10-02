@@ -23,7 +23,7 @@ namespace MonitoringBackend.Controller
                 return BadRequest("文件为空");
 
             // 创建保存路径
-            var uploadsFolder = "/home/wwwroot/demo.cyblog.top/uploads/";
+            var uploadsFolder = "/app/uploads/";
             //var uploadsFolder = Path.Combine(_env.WebRootPath ?? "wwwroot", "uploads");
             if (!Directory.Exists(uploadsFolder))
             {

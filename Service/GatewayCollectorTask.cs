@@ -18,24 +18,9 @@ namespace MonitoringBackend.Service
         private readonly ILogger _logger;
         private Gateway gateway1 { get; }
         private readonly IHubContext<GatewayHub> _hubContext;
-        //private List<AlarmRecord> alarmRecords = new List<AlarmRecord>();
         public bool IsRunning => !_task.IsCompleted;
         private ModbusTcpHelper modbustcp;
         private readonly InfluxDbHelper _influxDbHelper;
-        // 当前传感器的报警状态（高、低、正常）
-        private enum AlarmState
-        {
-            Normal,
-            HighAlarm,
-            LowAlarm
-        }
-
-        public enum AlarmType
-        {
-            None,
-            High,
-            Low
-        }
 
         public GatewayCollectorTask(Gateway gateway, ILogger logger, IHubContext<GatewayHub> hubContext, InfluxDbHelper influxDbHelper)
         {
@@ -56,30 +41,38 @@ namespace MonitoringBackend.Service
             
             while (!token.IsCancellationRequested)
             {
-                (List<SensorData> data, online, Dictionary<string, AlarmRecord> alarmRecord) = modbustcp.getData();
-
-                var result = new
+                try
                 {
-                    gateway1.id,
-                    gateway1.name,
-                    gateway1.ip,
-                    online,
-                    data = data
-                };
+                    (List<SensorData> data, online, Dictionary<string, AlarmRecord> alarmRecord) = modbustcp.getData();
 
-                var json = JsonSerializer.Serialize(result);
-                var alarm_json = JsonSerializer.Serialize(alarmRecord.Values.ToList());
-                await _hubContext.Clients.All.SendAsync("ReceiveGatewayData", json);
-                await _hubContext.Clients.All.SendAsync("Alarms", alarm_json);
-                await _influxDbHelper.WriteSensorBatchAsync(data);
-                //foreach (var item in data)
-                //{
-                //    //await _alarmService.ProcessDataAsync(item.SensorId, "XVibration", (float)item.XVibration);
-                //    //await _alarmService.ProcessDataAsync(item.SensorId, "YVibration", item.YVibration);
-                //    //await _alarmService.ProcessDataAsync(item.SensorId, "ZVibration", item.ZVibration);
-                //    //await _alarmService.ProcessDataAsync(item.SensorId, "Vibration", item.Vibration);
-                //    //await _alarmService.ProcessDataAsync(item.SensorId, "Temperature", item.Temperature);
-                //}
+                    var result = new
+                    {
+                        gateway1.id,
+                        gateway1.name,
+                        gateway1.ip,
+                        online,
+                        data = data
+                    };
+
+                    var json = JsonSerializer.Serialize(result);
+                    var alarm_json = JsonSerializer.Serialize(alarmRecord.Values.ToList());
+                    
+                    // 并行发送数据和写入InfluxDB以提高性能
+                    var tasks = new[]
+                    {
+                        _hubContext.Clients.All.SendAsync("ReceiveGatewayData", json, token),
+                        _hubContext.Clients.All.SendAsync("Alarms", alarm_json, token),
+                        _influxDbHelper.WriteSensorBatchAsync(data)
+                    };
+                    
+                    await Task.WhenAll(tasks);
+                }
+                catch (Exception ex) when (!token.IsCancellationRequested)
+                {
+                    _logger.LogError(ex, $"[{gateway1.id}] 数据采集出错: {ex.Message}");
+                    online = false;
+                }
+
                 await Task.Delay(1000, token); // 每秒采集
             }
             _logger.LogInformation($"[{gateway1.id}] 已停止采集。");
@@ -87,8 +80,7 @@ namespace MonitoringBackend.Service
 
         public void Stop()
         {
-                _cts.Cancel();    
+            _cts.Cancel();    
         }
     }
-
 }

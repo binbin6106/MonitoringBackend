@@ -16,9 +16,9 @@ namespace MonitoringBackend.Service
         private readonly IHubContext<GatewayHub> _hubContext;
         private readonly object _lock = new();
         private readonly InfluxDbHelper _influxDbHelper;
-        //private List<Device> devices = new List<Device>();
 
-        public MultiDeviceCollectorService(ILogger<MultiDeviceCollectorService> logger, IHubContext<GatewayHub> hubContext, InfluxDbHelper influxDbHelper)
+        public MultiDeviceCollectorService(ILogger<MultiDeviceCollectorService> logger, 
+            IHubContext<GatewayHub> hubContext, InfluxDbHelper influxDbHelper)
         {
             _logger = logger;
             _hubContext = hubContext;
@@ -78,7 +78,6 @@ namespace MonitoringBackend.Service
             List<Device> devices = await getDevices();
             Dictionary<long, string> deviceData = devices.ToDictionary(d => d.id, d => d.name);
 
-
             foreach (var gateway in gateways)
             {
                 foreach (var sensor in gateway.sensors)
@@ -100,10 +99,6 @@ namespace MonitoringBackend.Service
                 {
                     _gateways[item.id] = new GatewayCollectorTask(item, _logger, _hubContext, _influxDbHelper);
                 }
-                //foreach (Device item in devices)
-                //{
-                //    _devices[item.id] = new DeviceCollectorTask(item, _logger, _hubContext);
-                //}
             }
         }
 
@@ -119,5 +114,4 @@ namespace MonitoringBackend.Service
             }
         }
     }
-
 }
