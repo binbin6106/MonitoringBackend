@@ -34,5 +34,28 @@ namespace MonitoringBackend.Controller
             var result = await _influxDbHelper.QuerySensorDataAsync(device_id, sensor_id, start, end);
             return Ok(ApiResponse<object>.Success(result));
         }
+
+        /// <summary>
+        /// datazoom 按时间范围返回历史数据
+        /// </summary>
+        /// <remarks>
+        /// 示例请求:
+        ///
+        ///     GET /history/datazoom
+        ///
+        /// </remarks>
+        /// <returns>返回某个设备的某个传感器在一段时间内的历史数据。</returns>
+        /// <response code="200">成功获取数据。</response>
+        [HttpGet("datazoom")]
+        public async Task<IActionResult> GetHistoryDataByZoom(
+            [FromQuery(Name = "device_id")] int device_id,
+            [FromQuery(Name = "sensor_id")] int sensor_id,
+            [FromQuery(Name = "from")] DateTime from,
+            [FromQuery(Name = "to")] DateTime to)
+        {
+            var result = await _influxDbHelper.QuerySensorDataPagedAsync(device_id, sensor_id, from, to);
+            return Ok(ApiResponse<object>.Success(result));
+        }
     }
 }
+

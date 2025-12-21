@@ -12,7 +12,8 @@ namespace MonitoringBackend.Models
         public string? unit { get; set; }
         public string ? low_threshold { get; set; } //下限阈值
         public string? up_threshold { get; set; } // 上限阈值
-       [NotMapped]
+        public string? install_type { get; set; } // 安装方式
+        [NotMapped]
         public string? device_name { get; set; }
     }
 }

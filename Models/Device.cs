@@ -10,8 +10,8 @@
         public int x { get; set; } = 0; // 默认值为0
         public int y { get; set; } = 0; // 默认值为0
         public int z { get; set; } = 0;
-        public string line_start { get; set; }
-        public string line_end { get; set; }
+        public string line_start { get; set; } = "0,0,0";
+        public string line_end { get; set; } = "0,0,0";
         public float width { get; set; } = 0.0f; // 默认值为0
         public float height { get; set; } = 0.0f; // 默认值为0
         public float radius { get; set; } = 0.0f; // 半径，默认为0

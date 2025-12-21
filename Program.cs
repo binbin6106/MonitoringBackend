@@ -102,7 +102,7 @@ app.UseRouting();
 app.UseAuthentication();  // 启用认证（解析 Token）
 app.UseAuthorization();   // 启用授权（处理 [Authorize] 特性）
 
-//app.UseCors(); //生产环境取消Cors
+app.UseCors(); //生产环境取消Cors
 
 //app.MapHub<DeviceDataHub>("/sensorHub");
 app.MapHub<GatewayHub>("/sensorHub");

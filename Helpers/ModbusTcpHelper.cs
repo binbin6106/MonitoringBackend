@@ -51,11 +51,34 @@ namespace MonitoringBackend.Helpers
                         {
                             numRegisters = 5;
                         }
-
+                        Debug.WriteLine(gateway.sensors[i].install_type);
                         ushort[] values = new ushort[6];
                         ushort startAddress = ModbusAddress[i];
                         ushort[] tempValues = master.ReadHoldingRegisters(SlaveId, startAddress, numRegisters);
                         Array.Copy(tempValues, values, Math.Min(numRegisters, values.Length));
+                        //新增安装方式处理12.19
+                        //XVibration = values[4] / 1000.0,
+                        //YVibration = values[3] / 1000.0,
+                        //ZVibration = values[2] / 1000.0,
+                        switch (gateway.sensors[i].install_type)
+                        {
+                            case "Z": //默认安装方式，无需调整
+                                break;
+                            case "Y":
+                                // Y安装方式，交换Y和Z轴数据
+                                ushort tempY = values[3];
+                                values[3] = values[2];
+                                values[2] = tempY;
+                                break;
+                            case "X":
+                                // X安装方式，交换X和Z轴数据
+                                ushort tempX = values[4];
+                                values[4] = values[2];
+                                values[2] = tempX;
+                                break;
+                            default:
+                                break;
+                        }
 
                         if (gateway.sensors[i].low_threshold != null && gateway.sensors[i].up_threshold != null)
                         {
@@ -74,7 +97,7 @@ namespace MonitoringBackend.Helpers
                                 if (!isNowAlarm)
                                 {
                                     // 检查是否超出阈值
-                                    if (nowValue >= up_threshold[q] || nowValue <= low_threshold[q])
+                                    if (nowValue >= up_threshold[q])
                                     {
                                         string alarmType = nowValue >= up_threshold[q] ? "High" : "Low";
                                         
@@ -144,17 +167,8 @@ namespace MonitoringBackend.Helpers
         // 新增：计算报警级别（0-20%为一般，>20%为紧急）
         private string CalculateAlarmLevel(float currentValue, float minThreshold, float maxThreshold)
         {
-            if (currentValue > maxThreshold)
-            {
-                var exceedPercentage = (currentValue - maxThreshold) / maxThreshold;
-                return exceedPercentage > 0.2f ? "critical" : "warning";
-            }
-            else if (currentValue < minThreshold)
-            {
-                var deficitPercentage = (minThreshold - currentValue) / minThreshold;
-                return deficitPercentage > 0.2f ? "critical" : "warning";
-            }
-            return "normal";
+            var exceedPercentage = (currentValue - maxThreshold) / maxThreshold;
+            return exceedPercentage > 0.2f ? "critical" : "warning";
         }
     }
 }

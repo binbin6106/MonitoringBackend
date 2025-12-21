@@ -1,7 +1,8 @@
-锘縰sing InfluxDB.Client;
+using InfluxDB.Client;
 using InfluxDB.Client.Api.Domain;
 using InfluxDB.Client.Writes;
 using Microsoft.Extensions.Options;
+using MonitoringBackend.Models;
 using Newtonsoft.Json.Linq;
 using NodaTime;
 
@@ -10,8 +11,8 @@ namespace MonitoringBackend.Helpers
 
     public class InfluxDbHelper
     {
-        private readonly string _bucket = "";          // 鏀逛负浣犺嚜宸辩殑 bucket 鍚嶇О
-        private readonly string _org = "";                // 鏀逛负浣犺缃殑缁勭粐鍚嶇О
+        private readonly string _bucket = "";          // 改为你自己的 bucket 名称
+        private readonly string _org = "";                // 改为你设置的组织名称
         private readonly InfluxDBClient _client;
         private readonly WriteApiAsync _writeApi;
         public InfluxDbHelper(IOptions<InfluxSettings> settings)
@@ -74,7 +75,7 @@ namespace MonitoringBackend.Helpers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"鍐欏叆 InfluxDB 鍑洪敊: {ex.Message}");
+                Console.WriteLine($"写入 InfluxDB 出错: {ex.Message}");
             }
         }
 
@@ -120,6 +121,11 @@ namespace MonitoringBackend.Helpers
             }
 
             return result;
+        }
+
+        public async Task<List<SensorData>> QuerySensorDataPagedAsync(int device_id, int sensor_id, DateTime from, DateTime to)
+        {
+            return await QuerySensorDataAsync(device_id, sensor_id, from, to);
         }
     }
 
