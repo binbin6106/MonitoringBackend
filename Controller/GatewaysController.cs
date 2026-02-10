@@ -8,6 +8,7 @@ using Newtonsoft.Json.Linq;
 namespace MonitoringBackend.Controller
 {
     [ApiController]
+    [Authorize]
     [Route("[controller]")]
     public class GatewaysController : ControllerBase
     {

@@ -16,51 +16,60 @@ namespace MonitoringBackend.Service
         private readonly IHubContext<GatewayHub> _hubContext;
         private readonly object _lock = new();
         private readonly InfluxDbHelper _influxDbHelper;
+        private readonly IServiceScopeFactory _scopeFactory;
 
         public MultiDeviceCollectorService(ILogger<MultiDeviceCollectorService> logger, 
-            IHubContext<GatewayHub> hubContext, InfluxDbHelper influxDbHelper)
+            IHubContext<GatewayHub> hubContext, InfluxDbHelper influxDbHelper, IServiceScopeFactory scopeFactory)
         {
             _logger = logger;
             _hubContext = hubContext;
             _influxDbHelper = influxDbHelper;
+            _scopeFactory = scopeFactory;
         }
 
         private async Task<List<Device>> getDevices()
         {
-            HttpClient client = new HttpClient();
-            string response = await client.GetStringAsync("http://localhost:5000/devices");
-            using JsonDocument doc = JsonDocument.Parse(response);
-            List<Device> devices = new List<Device>();
-            JsonElement root = doc.RootElement;
-            try
-            {
-                JsonElement data = root.GetProperty("data");
-                devices = JsonSerializer.Deserialize<List<Device>>(data.GetRawText());               
-            }
-            catch (InvalidOperationException ex)
-            {
-                Debug.WriteLine($"操作无效：{ex.Message}");
-            }
-            return devices;
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            return await context.Devices.ToListAsync();
+            //HttpClient client = new HttpClient();
+            //string response = await client.GetStringAsync("http://localhost:5000/devices");
+            //using JsonDocument doc = JsonDocument.Parse(response);
+            //List<Device> devices = new List<Device>();
+            //JsonElement root = doc.RootElement;
+            //try
+            //{
+            //    JsonElement data = root.GetProperty("data");
+            //    devices = JsonSerializer.Deserialize<List<Device>>(data.GetRawText());
+            //}
+            //catch (InvalidOperationException ex)
+            //{
+            //    Debug.WriteLine($"操作无效：{ex.Message}");
+            //}
+            //return devices;
         }
 
         private async Task<List<Gateway>> getGateways()
         {
-            HttpClient client = new HttpClient();
-            string response = await client.GetStringAsync("http://localhost:5000/gateways");
-            using JsonDocument doc = JsonDocument.Parse(response);
-            List<Gateway> gateways = new List<Gateway>();
-            JsonElement root = doc.RootElement;
-            try
-            {
-                JsonElement data = root.GetProperty("data");
-                gateways = JsonSerializer.Deserialize<List<Gateway>>(data.GetRawText());
-            }
-            catch (InvalidOperationException ex)
-            {
-                Debug.WriteLine($"操作无效：{ex.Message}");
-            }
-            return gateways;
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            // 记得 Include 传感器，否则你的循环逻辑会报错
+            return await context.Gateways.Include(g => g.sensors).ToListAsync();
+            //HttpClient client = new HttpClient();
+            //string response = await client.GetStringAsync("http://localhost:5000/gateways");
+            //using JsonDocument doc = JsonDocument.Parse(response);
+            //List<Gateway> gateways = new List<Gateway>();
+            //JsonElement root = doc.RootElement;
+            //try
+            //{
+            //    JsonElement data = root.GetProperty("data");
+            //    gateways = JsonSerializer.Deserialize<List<Gateway>>(data.GetRawText());
+            //}
+            //catch (InvalidOperationException ex)
+            //{
+            //    Debug.WriteLine($"操作无效：{ex.Message}");
+            //}
+            //return gateways;
         }
 
         public async Task StartAllDevicesAsync()

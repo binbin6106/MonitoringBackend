@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MonitoringBackend.Data;
@@ -6,6 +7,7 @@ using MonitoringBackend.Models;
 namespace MonitoringBackend.Controller
 {
     [ApiController]
+    [Authorize]
     [Route("[controller]")]
     public class SensorThresholdController : ControllerBase
     {

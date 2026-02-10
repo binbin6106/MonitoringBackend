@@ -103,6 +103,7 @@ namespace MonitoringBackend.Controller
         }
 
         // 切换启用状态
+        [Authorize]
         [HttpPatch("{id}/toggle")]
         public async Task<IActionResult> ToggleUserStatus(long id)
         {

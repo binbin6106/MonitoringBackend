@@ -9,6 +9,7 @@ using System.Diagnostics;
 namespace MonitoringBackend.Controller
 {
     [ApiController]
+    [Authorize]
     [Route("[controller]")]
     public class DevicesController : ControllerBase
     {

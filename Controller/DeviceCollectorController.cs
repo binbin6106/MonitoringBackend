@@ -1,9 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using MonitoringBackend.Service;
 
 namespace MonitoringBackend.Controller
 {
     [ApiController]
+    [Authorize]
     [Route("device-control")]
     public class DeviceCollectorController : ControllerBase
     {

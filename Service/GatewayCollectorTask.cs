@@ -53,7 +53,10 @@ namespace MonitoringBackend.Service
                         online,
                         data = data
                     };
-
+                    if (!online)
+                    {
+                        alarmRecord.Clear();
+                    }
                     var json = JsonSerializer.Serialize(result);
                     var alarm_json = JsonSerializer.Serialize(alarmRecord.Values.ToList());
                     

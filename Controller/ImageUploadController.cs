@@ -1,9 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using MonitoringBackend.Models;
 
 namespace MonitoringBackend.Controller
 {
     [ApiController]
+    [Authorize]
     [Route("[controller]")]
     public class ImageUploadController : ControllerBase
     {
